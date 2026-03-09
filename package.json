@@ -1,0 +1,19 @@
+{
+  "name": "prd-bin",
+  "version": "1.0.0",
+  "description": "Local-first, open source PRD generator powered by AI",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --kill-others \"pnpm run dev:server\" \"pnpm run dev:client\"",
+    "dev:client": "cd client && pnpm run dev",
+    "dev:server": "cd server && pnpm run dev",
+    "build": "cd client && pnpm run build",
+    "lint": "cd client && pnpm run lint",
+    "start": "cd server && pnpm run start"
+  },
+  "keywords": ["prd", "ai", "local-first", "openrouter", "generator"],
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

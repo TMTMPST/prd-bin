@@ -234,16 +234,92 @@
    MERMAID DIAGRAM
    ============================================ */
 .mermaid-diagram {
-  margin: 1.5rem 0;
-  padding: 2rem;
+  margin: 2rem 0;
+  padding: 2.5rem 1rem;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   overflow-x: auto;
   display: flex;
   justify-content: center;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
 }
-.mermaid-diagram svg { max-width: 100%; height: auto; }
+
+.dark .mermaid-diagram {
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.2);
+}
+
+.mermaid-diagram svg { 
+  max-width: 100%; 
+  height: auto; 
+  font-family: var(--font-sans) !important;
+}
+
+/* Enhancing Node Shapes with subtle depth */
+.mermaid-diagram .node rect,
+.mermaid-diagram .node circle,
+.mermaid-diagram .node ellipse,
+.mermaid-diagram .node polygon,
+.mermaid-diagram .node path {
+  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.06));
+  stroke-width: 1.5px;
+  transition: all 0.2s ease;
+}
+
+.dark .mermaid-diagram .node rect,
+.dark .mermaid-diagram .node circle,
+.dark .mermaid-diagram .node ellipse,
+.dark .mermaid-diagram .node polygon,
+.dark .mermaid-diagram .node path {
+  filter: drop-shadow(0px 2px 6px rgba(0,0,0,0.3));
+}
+
+/* Thicker edge lines for better visibility */
+.mermaid-diagram .edgePath .path {
+  stroke-width: 1.5px !important;
+}
+
+/* Bold text inside nodes */
+.mermaid-diagram .node text,
+.mermaid-diagram .nodeLabel {
+  font-weight: 500 !important;
+}
+
+/* ERD Specific Styling */
+.mermaid-diagram .er.attributeBoxEven {
+  fill: var(--color-bg-secondary) !important;
+}
+.mermaid-diagram .er.attributeBoxOdd {
+  fill: var(--color-bg) !important;
+}
+.mermaid-diagram .er.entityBox {
+  fill: var(--color-bg-elevated) !important;
+  stroke: var(--color-border-hover) !important;
+  stroke-width: 1.5px;
+}
+
+/* ============================================
+   CHAT MARKDOWN — Compact style for chat bubbles
+   ============================================ */
+.chat-markdown.markdown-content {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.chat-markdown.markdown-content h1,
+.chat-markdown.markdown-content h2 {
+  font-size: 0.9375rem;
+  margin: 0.75rem 0 0.4rem;
+}
+.chat-markdown.markdown-content h3 {
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0.3rem;
+}
+.chat-markdown.markdown-content p { margin: 0 0 0.5rem; }
+.chat-markdown.markdown-content ul,
+.chat-markdown.markdown-content ol { margin: 0 0 0.5rem; padding-left: 1.25rem; }
+.chat-markdown.markdown-content li { margin-bottom: 0.15rem; }
+.chat-markdown.markdown-content pre { font-size: 0.75rem; padding: 0.75rem; }
+.chat-markdown.markdown-content > *:last-child { margin-bottom: 0; }
 
 /* ============================================
    ANIMATIONS
@@ -271,6 +347,24 @@
    PRINT / PDF STYLES
    ============================================ */
 @media print {
+  :root, html, .dark {
+    /* Force Light Mode variables for printing */
+    --color-bg: #FFFFFF !important;
+    --color-bg-secondary: #F5F3EF !important;
+    --color-bg-elevated: #FFFFFF !important;
+    --color-bg-hover: #F0EDE8 !important;
+    --color-bg-input: #FFFFFF !important;
+
+    --color-border: #E8E4DE !important;
+    --color-border-hover: #D4CFC7 !important;
+    --color-border-input: #D4CFC7 !important;
+
+    --color-text: #1A1512 !important;
+    --color-text-secondary: #333333 !important;
+    --color-text-tertiary: #555555 !important;
+    --color-text-inverse: #FFFFFF !important;
+  }
+
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

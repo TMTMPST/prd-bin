@@ -10,9 +10,11 @@ export interface PrdHistoryItem {
     targetAudience: string
     description: string
     techStack: string
+    selectedTemplate?: string
   }
   createdAt: string
   model: string
+  tags?: string[]
 }
 
 interface HistoryState {

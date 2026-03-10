@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Header } from './components/Header'
+import { useState, useEffect } from 'react'
+import { Sidebar } from './components/Sidebar'
 import { ApiKeyModal } from './components/ApiKeyModal'
 import { PrdForm } from './components/PrdForm'
 import { PrdViewer } from './components/PrdViewer'
@@ -14,30 +14,34 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('home')
   const [showSetup, setShowSetup] = useState(!hasCompletedSetup)
 
+  // Force dark mode initially to match Claude style if desired, though theme store handles this
+  useEffect(() => {
+    // Ensuring background covers full screen
+    document.body.className = document.documentElement.className
+  }, [])
+
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
+    <div className="h-screen w-full flex bg-bg overflow-hidden print:h-auto print:overflow-visible print:block">
       {showSetup && <ApiKeyModal onComplete={() => setShowSetup(false)} />}
 
-      <Header currentView={currentView} onNavigate={setCurrentView} />
+      <Sidebar currentView={currentView} onNavigate={setCurrentView} />
 
-      <main className="flex-1 max-w-3xl w-full mx-auto px-6 py-8">
-        {currentView === 'home' && (
-          <>
-            <PrdForm />
-            <PrdViewer />
-          </>
-        )}
-        {currentView === 'settings' && <SettingsPanel />}
-        {currentView === 'history' && (
-          <HistoryList onNavigateHome={() => setCurrentView('home')} />
-        )}
-      </main>
-
-      <footer className="no-print border-t border-border">
-        <div className="max-w-3xl mx-auto px-6 py-4 text-xs text-text-tertiary">
-          prd-bin · local-first PRD generator
+      <main className="flex-1 h-full overflow-y-auto relative print:h-auto print:overflow-visible print:block">
+        <div className="max-w-3xl w-full mx-auto px-8 py-12 pb-24 min-h-full flex flex-col relative pt-safe pb-safe print:p-0 print:min-h-0 print:block">
+          {currentView === 'home' && (
+            <div className="flex-1 flex flex-col justify-center min-h-[50vh]">
+              <PrdForm />
+              <div className="flex-1 mt-4">
+                <PrdViewer />
+              </div>
+            </div>
+          )}
+          {currentView === 'settings' && <SettingsPanel />}
+          {currentView === 'history' && (
+            <HistoryList onNavigateHome={() => setCurrentView('home')} />
+          )}
         </div>
-      </footer>
+      </main>
     </div>
   )
 }

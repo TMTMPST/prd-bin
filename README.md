@@ -8,13 +8,15 @@ Generate comprehensive Product Requirements Documents (PRD) with visual diagrams
 
 - **100% Local** — Runs entirely on localhost, your data never leaves your machine
 - **BYOK (Bring Your Own Key)** — Use your own OpenRouter API key
-- **Model Pricing** — See real-time input/output costs ($/1M tokens) for all OpenRouter models
+- **Flexible Model Selection** — Easily filter models by Premium, Balanced, and Economy tiers with real-time input/output costs
 - **Real-time Streaming** — Watch your PRD being generated live via SSE
+- **File Context Uploads** — Upload images (wireframes) and text files for multimodal vision model integration
 - **AI Description Generator** — Auto-draft your PRD description based on product name and audience
-- **Auto Diagrams** — User Flow & ERD diagrams auto-rendered with Mermaid.js
-- **Inline Editing** — Edit the generated PRD directly in browser
-- **Export** — Download as Markdown, PDF, or JSON
-- **Server Cache History** — PRDs are saved as local JSON files on your machine (no database required)
+- **Auto Diagrams** — User Flow, ERD, and other diagrams auto-rendered with Mermaid.js
+- **📝 WYSIWYG Editor** — Edit the generated PRD directly using a clean, Notion-like Tiptap rich-text editor
+- **💬 PRD Chat Assistant** — Iteratively refine your PRDs chatting with an AI assistant directly in the viewer
+- **Export & Integrations** — Download as MD/PDF, or export directly to **Notion**, **Jira**, and **Linear**
+- **Server Cache History** — PRDs are automatically saved and accessible via a clean, collapsable Sidebar
 - **Dual Theme** — Beautiful Claude.ai-inspired editorial light mode and warm olive dark mode
 
 ## Quick Start
@@ -52,9 +54,10 @@ pnpm dev
 ## How It Works
 
 1. **Enter your OpenRouter API key** — validated instantly
-2. **Pick a model** — See pricing and choose between Claude, Gemini, GPT-4o, DeepSeek, etc.
-3. **Describe your product** — Use the AI generator to draft a description from your product name
-4. **Click Generate** — PRD streams in real-time with:
+2. **Pick a model** — Use the Advanced filter to choose from Premium, Balanced, or Economy models like Claude, Gemini, GPT-4o, DeepSeek, etc.
+3. **Add Context** — Upload wireframe images or text files 
+4. **Describe your product** — Use the AI generator to draft a description from your product name
+5. **Click Generate** — PRD streams in real-time with:
    - Executive Summary
    - User Personas & Stories
    - System Architecture
@@ -62,7 +65,8 @@ pnpm dev
    - ERD (Mermaid)
    - API Endpoints
    - Timeline & more
-5. **Edit, export, or save** — Download as MD/PDF, or let it auto-save to your local JSON cache
+6. **Refine & Edit** — Chat with the embedded AI assistant for iterative suggestions, or use the Tiptap WYSIWYG editor to make rich-text edits directly.
+7. **Export or Auto-save** — Export directly to Notion/Jira/Linear, download as MD/PDF, and access past PRDs anytime from the Sidebar history.
 
 ## Project Structure
 

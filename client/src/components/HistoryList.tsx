@@ -1,5 +1,12 @@
+/**
+ * HistoryList.tsx — Displays saved PRD history
+ *
+ * Features: full-text search, tag filtering with chips,
+ * import/export, clear all, and navigation to view a PRD.
+ */
+
 import { useState, useRef } from 'react'
-import { Trash2, Eye, Download, Upload, FileText, Clock, Cpu, Search, X } from 'lucide-react'
+import { Trash2, Eye, Download, Upload, FileText, Clock, Cpu, Search, X, Tag } from 'lucide-react'
 import { useHistoryStore, type PrdHistoryItem } from '../stores/historyStore'
 import { useGenerateStore } from '../stores/generateStore'
 
@@ -11,13 +18,25 @@ export function HistoryList({ onNavigateHome }: HistoryListProps) {
   const { items, removeItem, clearAll, exportData, importData } = useHistoryStore()
   const { setContent, setFormData, setComplete } = useGenerateStore()
   const [search, setSearch] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const filtered = items.filter((item) =>
-    item.title.toLowerCase().includes(search.toLowerCase()) ||
-    item.content.toLowerCase().includes(search.toLowerCase())
-  )
+  // Collect all unique tags
+  const allTags = Array.from(
+    new Set(items.flatMap((item) => item.tags || []))
+  ).sort()
+
+  // Filter by search text AND active tag
+  const filtered = items.filter((item) => {
+    const matchesSearch =
+      !search ||
+      item.title.toLowerCase().includes(search.toLowerCase()) ||
+      item.content.toLowerCase().includes(search.toLowerCase())
+    const matchesTag =
+      !activeTag || (item.tags && item.tags.includes(activeTag))
+    return matchesSearch && matchesTag
+  })
 
   const handleView = (item: PrdHistoryItem) => {
     setFormData(item.formData)
@@ -75,19 +94,52 @@ export function HistoryList({ onNavigateHome }: HistoryListProps) {
       </div>
 
       {items.length > 0 && (
-        <div className="relative mb-4">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
-            className="w-full pl-8 pr-8 py-2 bg-bg-input border border-border-input rounded-lg text-text placeholder:text-text-tertiary focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-primary-light text-sm"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text cursor-pointer">
-              <X size={13} />
-            </button>
+        <div className="space-y-3 mb-4">
+          {/* Search bar */}
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search PRDs..."
+              className="w-full pl-8 pr-8 py-2 bg-bg-input border border-border-input rounded-lg text-text placeholder:text-text-tertiary focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-primary-light text-sm"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text cursor-pointer">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Tag filter chips */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setActiveTag(null)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                  activeTag === null
+                    ? 'bg-text text-text-inverse'
+                    : 'bg-bg-secondary text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                All
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                    activeTag === tag
+                      ? 'bg-primary text-text-inverse'
+                      : 'bg-primary-light text-primary hover:opacity-80'
+                  }`}
+                >
+                  <Tag size={10} />
+                  {tag}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -120,6 +172,20 @@ export function HistoryList({ onNavigateHome }: HistoryListProps) {
                     {item.model.split('/').pop()}
                   </span>
                 </div>
+                {/* Tag badges */}
+                {item.tags && item.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-primary-light text-primary text-[10px] font-medium rounded-full cursor-pointer hover:opacity-80"
+                        onClick={() => setActiveTag(tag)}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button

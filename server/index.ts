@@ -313,6 +313,188 @@ app.post("/api/generate", async (c) => {
   }
 });
 
+// ─── Export Proxy Routes ─────────────────────────────────────
+
+// Helper: split markdown content into user stories
+function extractUserStories(content: string): Array<{ title: string; description: string }> {
+  const stories: Array<{ title: string; description: string }> = [];
+  // Match patterns like "**As a ...**" or numbered user stories
+  const storyRegex = /(?:^|\n)(?:[-*]\s*|\d+\.\s*)(?:\*\*)?(?:As an? .+?(?:\*\*)?[.:]?\s*)([\s\S]*?)(?=\n(?:[-*]\s|\d+\.\s|##|$))/gi;
+  let match;
+  while ((match = storyRegex.exec(content)) !== null) {
+    const fullMatch = match[0].trim();
+    const firstLine = fullMatch.split('\n')[0].replace(/^\s*[-*\d.]+\s*/, '').replace(/\*\*/g, '');
+    stories.push({
+      title: firstLine.slice(0, 120),
+      description: fullMatch.replace(/\*\*/g, ''),
+    });
+  }
+
+  // Fallback: if regex didn't find stories, try splitting by list items under "User Stories" heading
+  if (stories.length === 0) {
+    const userStoriesMatch = content.match(/##\s*(?:\d+\.\s*)?User Stories([\s\S]*?)(?=\n##|\n---|\z)/i);
+    if (userStoriesMatch) {
+      const section = userStoriesMatch[1];
+      const items = section.split(/\n[-*]\s+/).filter(s => s.trim());
+      for (const item of items) {
+        const firstLine = item.split('\n')[0].replace(/\*\*/g, '').trim();
+        if (firstLine) {
+          stories.push({ title: firstLine.slice(0, 120), description: item.replace(/\*\*/g, '') });
+        }
+      }
+    }
+  }
+
+  return stories;
+}
+
+// Notion export
+app.post("/api/export/notion", async (c) => {
+  const { apiKey, parentPageId, title, content } = await c.req.json();
+
+  if (!apiKey || !parentPageId) {
+    return c.json({ success: false, error: "Notion API key and parent page ID required" }, 400);
+  }
+
+  try {
+    // Convert markdown to simple Notion blocks
+    const lines = content.split('\n');
+    const children: any[] = [];
+
+    for (const line of lines.slice(0, 100)) { // Notion has block limits
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith('# ')) {
+        children.push({ object: 'block', type: 'heading_1', heading_1: { rich_text: [{ type: 'text', text: { content: trimmed.slice(2) } }] } });
+      } else if (trimmed.startsWith('## ')) {
+        children.push({ object: 'block', type: 'heading_2', heading_2: { rich_text: [{ type: 'text', text: { content: trimmed.slice(3) } }] } });
+      } else if (trimmed.startsWith('### ')) {
+        children.push({ object: 'block', type: 'heading_3', heading_3: { rich_text: [{ type: 'text', text: { content: trimmed.slice(4) } }] } });
+      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        children.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: trimmed.slice(2) } }] } });
+      } else if (/^\d+\.\s/.test(trimmed)) {
+        children.push({ object: 'block', type: 'numbered_list_item', numbered_list_item: { rich_text: [{ type: 'text', text: { content: trimmed.replace(/^\d+\.\s/, '') } }] } });
+      } else if (trimmed === '---') {
+        children.push({ object: 'block', type: 'divider', divider: {} });
+      } else {
+        children.push({ object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: trimmed.replace(/\*\*/g, '') } }] } });
+      }
+    }
+
+    const res = await fetch('https://api.notion.com/v1/pages', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Notion-Version': '2022-06-28',
+      },
+      body: JSON.stringify({
+        parent: { page_id: parentPageId },
+        properties: { title: { title: [{ text: { content: title || 'PRD' } }] } },
+        children,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      return c.json({ success: false, error: `Notion API error: ${err}` });
+    }
+
+    const data = await res.json();
+    return c.json({ success: true, url: data.url });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message || 'Notion export failed' });
+  }
+});
+
+// Jira export
+app.post("/api/export/jira", async (c) => {
+  const { email, apiToken, domain, projectKey, content } = await c.req.json();
+
+  if (!email || !apiToken || !domain || !projectKey) {
+    return c.json({ success: false, error: "All Jira fields required" }, 400);
+  }
+
+  try {
+    const stories = extractUserStories(content);
+    if (stories.length === 0) {
+      return c.json({ success: false, error: "No user stories found in the PRD" });
+    }
+
+    const auth = Buffer.from(`${email}:${apiToken}`).toString('base64');
+    let created = 0;
+
+    for (const story of stories.slice(0, 20)) {
+      const res = await fetch(`https://${domain}/rest/api/3/issue`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            project: { key: projectKey },
+            summary: story.title,
+            description: {
+              type: 'doc', version: 1,
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: story.description }] }],
+            },
+            issuetype: { name: 'Story' },
+          },
+        }),
+      });
+
+      if (res.ok) created++;
+    }
+
+    return c.json({ success: true, issueCount: created });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message || 'Jira export failed' });
+  }
+});
+
+// Linear export
+app.post("/api/export/linear", async (c) => {
+  const { apiKey, teamId, content } = await c.req.json();
+
+  if (!apiKey || !teamId) {
+    return c.json({ success: false, error: "Linear API key and team ID required" }, 400);
+  }
+
+  try {
+    const stories = extractUserStories(content);
+    if (stories.length === 0) {
+      return c.json({ success: false, error: "No user stories found in the PRD" });
+    }
+
+    let created = 0;
+
+    for (const story of stories.slice(0, 20)) {
+      const res = await fetch('https://api.linear.app/graphql', {
+        method: 'POST',
+        headers: {
+          'Authorization': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: `mutation CreateIssue($input: IssueCreateInput!) { issueCreate(input: $input) { success } }`,
+          variables: {
+            input: { teamId, title: story.title, description: story.description },
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data?.data?.issueCreate?.success) created++;
+    }
+
+    return c.json({ success: true, issueCount: created });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message || 'Linear export failed' });
+  }
+});
+
 const port = 3001;
 console.log(`🚀 prd-bin server running on http://localhost:${port}`);
 console.log(`📁 PRD cache: ${DATA_DIR}`);

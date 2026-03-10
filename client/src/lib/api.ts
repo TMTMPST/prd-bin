@@ -27,7 +27,7 @@ export async function fetchModels(apiKey: string): Promise<ModelInfo[]> {
 export async function generatePrd(
   apiKey: string,
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  messages: Array<{ role: string; content: any }>,
   onChunk: (chunk: string) => void,
   onDone: () => void,
   onError: (error: string) => void,

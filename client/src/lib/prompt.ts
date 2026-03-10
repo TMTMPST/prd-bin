@@ -1,47 +1,29 @@
+/**
+ * prompt.ts — Builds the message array for OpenRouter API calls
+ *
+ * Uses template-based system prompts and appends custom instructions.
+ * Supports multimodal messages for vision models when image
+ * attachments are present.
+ */
+
 import type { PrdFormData } from '../stores/generateStore'
+import { getTemplate } from './templates'
 
-export function buildPrdPrompt(formData: PrdFormData): Array<{ role: string; content: string }> {
-  const systemPrompt = `You are an expert Product Manager and Technical Architect. Your task is to generate a comprehensive, production-quality Product Requirements Document (PRD).
+type MessageContent = string | Array<{ type: string; text?: string; image_url?: { url: string } }>
 
-## Output Rules:
-1. Write in clear, professional English.
-2. Use proper Markdown formatting with headers (##, ###), bullet points, tables, and code blocks.
-3. Include Mermaid diagrams where specified — wrap them in \`\`\`mermaid code blocks.
-4. Be specific and actionable — avoid vague statements.
-5. Include realistic examples and edge cases.
-6. Structure the PRD with clear section numbering.
+export function buildPrdPrompt(
+  formData: PrdFormData,
+  customInstructions?: string
+): Array<{ role: string; content: MessageContent }> {
+  const template = getTemplate(formData.selectedTemplate)
+  let systemPrompt = template.systemPrompt
 
-## PRD Structure to Follow:
-1. **Executive Summary** — Brief overview of the product, its purpose, and key value proposition.
-2. **Problem Statement** — What problem does this solve? Why does it matter?
-3. **Target Users & Personas** — Who are the primary users? Create 2-3 detailed personas.
-4. **User Stories** — Key user stories in "As a [user], I want to [action], so that [benefit]" format. Include acceptance criteria.
-5. **Functional Requirements** — Detailed feature list organized by priority (Must Have, Should Have, Nice to Have).
-6. **Non-Functional Requirements** — Performance, security, scalability, accessibility requirements.
-7. **System Architecture** — High-level architecture overview.
-8. **Tech Stack Recommendation** — Recommended technologies with justification.
-9. **User Flow Diagram** — Create a Mermaid flowchart showing the main user journey:
-   \`\`\`mermaid
-   flowchart TD
-       A[Start] --> B[Step 1]
-       B --> C{Decision}
-       C -->|Yes| D[Action]
-       C -->|No| E[Alternative]
-   \`\`\`
-10. **Entity Relationship Diagram (ERD)** — Create a Mermaid ERD showing the data model:
-    \`\`\`mermaid
-    erDiagram
-        USER ||--o{ ORDER : places
-        ORDER ||--|{ LINE-ITEM : contains
-    \`\`\`
-11. **API Endpoints** — Key API endpoints with methods, paths, and descriptions.
-12. **Success Metrics** — KPIs and how to measure them.
-13. **Timeline & Milestones** — Suggested development phases.
-14. **Risks & Mitigations** — Potential risks and how to address them.
+  // Append custom instructions if provided
+  if (customInstructions?.trim()) {
+    systemPrompt += `\n\n## Additional Instructions from User:\n${customInstructions.trim()}`
+  }
 
-Make the document thorough yet practical. Every section should provide real value.`
-
-  const userPrompt = `Generate a comprehensive PRD for the following product:
+  let userPromptText = `Generate a comprehensive PRD for the following product:
 
 **Product Name:** ${formData.appName}
 
@@ -52,11 +34,41 @@ ${formData.description}
 
 ${formData.techStack ? `**Preferred Tech Stack:** ${formData.techStack}` : '(No tech stack preference — recommend the best options)'}
 
-Please generate a complete, production-quality PRD following your structured format. Include detailed Mermaid diagrams for User Flow and ERD.`
+Please generate a complete, production-quality document following your structured format. Include detailed Mermaid diagrams where applicable.`
+
+  // Append text file attachments as context
+  const textAttachments = formData.attachments?.filter((a) => a.type === 'text') || []
+  const imageAttachments = formData.attachments?.filter((a) => a.type === 'image') || []
+
+  if (textAttachments.length > 0) {
+    userPromptText += '\n\n## Uploaded Context Files:\n'
+    for (const att of textAttachments) {
+      userPromptText += `\n### ${att.name}\n\`\`\`\n${att.content}\n\`\`\`\n`
+    }
+    userPromptText += '\nPlease incorporate the information from these context files into the PRD where relevant.'
+  }
+
+  // Build messages — use multimodal format if images are present
+  if (imageAttachments.length > 0) {
+    const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+      { type: 'text', text: userPromptText + '\n\nPlease analyze the attached images (wireframes, screenshots, designs) and incorporate what you see into the PRD — describe the UI patterns, features, and user flows visible in these images.' },
+    ]
+    for (const img of imageAttachments) {
+      contentParts.push({
+        type: 'image_url',
+        image_url: { url: img.content }, // base64 data URI
+      })
+    }
+
+    return [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: contentParts },
+    ]
+  }
 
   return [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: userPrompt },
+    { role: 'user', content: userPromptText },
   ]
 }
 

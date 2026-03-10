@@ -1,10 +1,13 @@
 import { create } from 'zustand'
+import type { FileAttachment } from '../components/FileUpload'
 
 export interface PrdFormData {
   appName: string
   targetAudience: string
   description: string
   techStack: string
+  selectedTemplate: string
+  attachments: FileAttachment[]
 }
 
 interface GenerateState {
@@ -30,6 +33,8 @@ const initialFormData: PrdFormData = {
   targetAudience: '',
   description: '',
   techStack: '',
+  selectedTemplate: 'full-prd',
+  attachments: [],
 }
 
 export const useGenerateStore = create<GenerateState>((set) => ({

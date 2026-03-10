@@ -25,8 +25,8 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'prd-bin-theme',
-      onRehydrate: () => {
-        return (state) => {
+      onRehydrateStorage: () => {
+        return (state?: ThemeState) => {
           if (state) applyTheme(state.theme)
         }
       },

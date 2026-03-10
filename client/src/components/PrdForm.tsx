@@ -1,15 +1,39 @@
-import { ArrowRight, Loader2, Square, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+/**
+ * PrdForm.tsx — Main form for generating PRDs
+ *
+ * Includes template selector, product details input fields,
+ * AI description generator, and the generate/stop button.
+ */
+
+import { ArrowRight, Loader2, Square, Sparkles, ChevronDown } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 import { useGenerateStore } from '../stores/generateStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { generatePrd } from '../lib/api'
 import { buildPrdPrompt } from '../lib/prompt'
+import { templates } from '../lib/templates'
+import { FileUpload } from './FileUpload'
 
 export function PrdForm() {
   const { formData, setFormData, isStreaming, appendContent, setStreaming, setComplete, setError, resetContent, abortController, setAbortController } =
     useGenerateStore()
-  const { apiKey, selectedModel } = useSettingsStore()
+  const { apiKey, selectedModel, customInstructions } = useSettingsStore()
   const [generatingDesc, setGeneratingDesc] = useState(false)
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowTemplateDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selectedTemplate = templates.find((t) => t.id === formData.selectedTemplate) || templates[0]
 
   const handleGenerate = async () => {
     if (!formData.appName.trim() || !formData.description.trim()) return
@@ -21,7 +45,7 @@ export function PrdForm() {
     const controller = new AbortController()
     setAbortController(controller)
 
-    const messages = buildPrdPrompt(formData)
+    const messages = buildPrdPrompt(formData, customInstructions)
 
     await generatePrd(
       apiKey,
@@ -67,7 +91,7 @@ export function PrdForm() {
   const canGenerateDesc = formData.appName.trim() && apiKey && selectedModel && !isStreaming && !generatingDesc
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in no-print">
       <h1 className="text-2xl font-bold text-text mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
         Draft a PRD
       </h1>
@@ -76,6 +100,48 @@ export function PrdForm() {
       </p>
 
       <div className="space-y-4">
+        {/* Template Selector */}
+        <div ref={dropdownRef} className="relative">
+          <label className="block text-[13px] font-medium text-text mb-1.5">
+            Template
+          </label>
+          <button
+            onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+            disabled={isStreaming}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 bg-bg-input border border-border-input rounded-lg text-text text-sm hover:border-border-hover focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-primary-light transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-base">{selectedTemplate.emoji}</span>
+              <span className="font-medium">{selectedTemplate.label}</span>
+              <span className="text-text-tertiary text-xs hidden sm:inline">— {selectedTemplate.description}</span>
+            </span>
+            <ChevronDown size={14} className={`text-text-tertiary transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showTemplateDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-fade-in">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setFormData({ selectedTemplate: t.id })
+                    setShowTemplateDropdown(false)
+                  }}
+                  className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-bg-hover transition-colors cursor-pointer ${
+                    t.id === formData.selectedTemplate ? 'bg-bg-hover' : ''
+                  }`}
+                >
+                  <span className="text-lg mt-0.5">{t.emoji}</span>
+                  <div>
+                    <div className="text-sm font-medium text-text">{t.label}</div>
+                    <div className="text-xs text-text-tertiary mt-0.5">{t.description}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[13px] font-medium text-text mb-1.5">
@@ -138,6 +204,14 @@ export function PrdForm() {
             rows={4}
             disabled={isStreaming}
             className="w-full px-3.5 py-2.5 bg-bg-input border border-border-input rounded-lg text-text placeholder:text-text-tertiary focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-primary-light transition-all text-sm resize-y min-h-24 disabled:opacity-50"
+          />
+        </div>
+
+        <div>
+          <FileUpload
+            attachments={formData.attachments || []}
+            onChange={(attachments) => setFormData({ attachments })}
+            disabled={isStreaming}
           />
         </div>
 
